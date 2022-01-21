@@ -69,3 +69,32 @@ The follow links contains previous trained models and logs.
 2. [yolo_models_test](https://drive.google.com/drive/folders/1i2Wiom7VP05wWcpyN4yMaJavjDQnS49T?usp=sharing) 
 
 3. [logs](https://drive.google.com/drive/folders/1gHSb_aIbfadDJwKjGwqWi9tjVzLNtzx0?usp=sharing)
+
+
+---
+### VOC 2007 Dataset
+* You can download [train/validation](http://pjreddie.com/media/files/VOCtrainval_06-Nov-2007.tar) 
+  and [test](http://pjreddie.com/media/files/VOCtest_06-Nov-2007.tar) by the above hyperlinks.
+* Or if you have an Texas A&M account, you might access the VOC2007 on datalab6.engr.tamu.edu
+   * Dataset path: /data/yiwei/VOCdevkit/VOC2007
+
+---
+
+### Environment setup
+```bash
+$ git clone git@github.com:YIWEI-CHEN/yolov1_maxim.git
+$ cd yolov1_maxim
+# note that ai8x-training and ai8x-synthesis should in the project root (e.g., yolov1_maxim)
+$ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-training.git
+$ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-synthesis.git
+
+# in your virtual environment
+# the following torch installation for NVIDIA RTX A5000
+$ pip install torch==1.10.1+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
+$ pip tensorboard matplotlib numpy
+```
+
+
+---
+### Reference
+* The repo is based on https://github.com/ProgrammerZhujinming/YOLOv1
