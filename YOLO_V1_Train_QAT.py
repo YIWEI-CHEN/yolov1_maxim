@@ -20,6 +20,8 @@ import sys
 #sys.path.insert(0, 'yolo/')
 #sys.path.insert(1, 'distiller/')
 #sys.path.insert(2, '/data/detection/')
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "ai8x-training"))
 
 from YOLO_V1_DataSet import YoloV1DataSet
 from YOLO_V1_LossFunction import  Yolov1_Loss
@@ -75,10 +77,10 @@ def log_init():
 # Initialize the dataset and dataloader
 def dataset_init(logger):
 
-    dataSet = YoloV1DataSet(imgs_dir="../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages",
-                            annotations_dir="../../../../../YOLO_V1_GPU/VOC2007/Train/Annotations",
-                            ClassesFile="../../VOC_remain_class.data",
-                            train_root="../../../../../YOLO_V1_GPU/VOC2007/Train/ImageSets/Main/",
+    dataSet = YoloV1DataSet(imgs_dir="/data/yiwei/VOCdevkit/VOC2007/JPEGImages",
+                            annotations_dir="/data/yiwei/VOCdevkit/VOC2007/Annotations",
+                            ClassesFile="/data/yiwei/VOCdevkit/VOC2007/VOC_remain_class.data",
+                            train_root="/data/yiwei/VOCdevkit/VOC2007/ImageSets/Main/",
                             img_per_class=eval(args.img_train),
                             ms_logger=logger)
 
@@ -89,7 +91,7 @@ def dataset_init(logger):
     #                         img_per_class = eval(args.img_train),
     #                         ms_logger=logger)
 
-    dataLoader = DataLoader(dataSet, batch_size=args.batch_size, shuffle=True,num_workers=4)
+    dataLoader = DataLoader(dataSet, batch_size=args.batch_size, shuffle=True, num_workers=4)
     return dataSet, dataLoader
 
 
