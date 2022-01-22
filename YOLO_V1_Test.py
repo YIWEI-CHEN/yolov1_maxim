@@ -1,4 +1,6 @@
 # 网络加载
+import os
+
 import torch
 import numpy as np
 import cv2
@@ -7,16 +9,22 @@ from torchvision import transforms
 
 import matplotlib.pyplot as plt
 
-import importlib
-mod = importlib.import_module("yolov1_bn_model_noaffine")
 
 import sys
-sys.path.append("../../../") # go to the directory of ai8x
+
+# go to the directory of ai8x
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "ai8x-training"))
+
 import ai8x
 # from batchnormfuser import bn_fuser
 
+dataset_root = "/data/yiwei/VOC2007"
 
 ai8x.set_device(85, simulate=False, round_avg=False, verbose=True)
+
+import importlib
+mod = importlib.import_module("yolov1_bn_model_noaffine")
 
 # from YOLO_V1_DataSet_small import YoloV1DataSet
 # dataSet = YoloV1DataSet(imgs_dir="../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages",
@@ -25,10 +33,10 @@ ai8x.set_device(85, simulate=False, round_avg=False, verbose=True)
 #                         data_path='../../../../../YOLO_V1_GPU/VOC2007/Train/ImageSets/Main')
 
 from YOLO_V1_DataSet import YoloV1DataSet
-dataSet = YoloV1DataSet(imgs_dir="../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages",
-                            annotations_dir="../../../../../YOLO_V1_GPU/VOC2007/Train/Annotations",
-                            ClassesFile="../../VOC_remain_class_V2.data",
-                            train_root="../../../../../YOLO_V1_GPU/VOC2007/Train/ImageSets/Main/",
+dataSet = YoloV1DataSet(imgs_dir=f"{dataset_root}/Train/JPEGImages",
+                            annotations_dir=f"{dataset_root}/Train/Annotations",
+                            ClassesFile=f"{dataset_root}/VOC_remain_class.data",
+                            train_root=f"{dataset_root}/Train/ImageSets/Main/",
                             img_per_class=100)
 
 Yolo = mod.Yolov1_net(num_classes=dataSet.Classes, bias=True)
@@ -47,12 +55,12 @@ ai8x.initiate_qat(Yolo, qat_policy)
 # checkpoint_fname = './log/QAT-20210712-003214/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep300.pth' # dataset v2
 # checkpoint_fname = './log/QAT-20210711-203619/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep300.pth' # whole dataset
 # checkpoint_fname = './log/QAT-20210712-024843/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep350.pth' # batch_size 64
-# checkpoint_fname = './log/QAT-20210712-033721/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth' # batch_size 16 seed 7
+# checkpoint_fname = './log/QAT-20210712-033721/scaled22x4_noaffine_shift0.99_maxim_yolo_qat_ep400.pth' # batch_size 16 seed 7
 # checkpoint_fname = './log/QAT-20210712-042211/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16
 # checkpoint_fname = './log/QAT-20210714-230119/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16
 # checkpoint_fname = './log/QAT-20210715-030212/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep500.pth'   # batch_size 16 full training set
 # checkpoint_fname = './log/QAT-20210715-082952/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
-checkpoint_fname = './log/QAT-20210924-175040/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
+checkpoint_fname = './log/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
 
 Yolo.load_state_dict(torch.load(checkpoint_fname, map_location=lambda storage, loc: storage)) # batch_size 16
 
@@ -62,13 +70,13 @@ checkpoint_dir = checkpoint_fname.replace(ck_fname, "")
 import distiller.apputils as apputils
 apputils.save_checkpoint(checkpoint_dir, "ai85net5", Yolo,
                             optimizer=None, scheduler=None, extras=None,
-                            is_best=False, name="Yolov1", dir="../../",
+                            is_best=False, name="Yolov1", dir=".",
                          )
 
 
 # class to index
 IndexToClassName = {}
-with open("../../VOC_remain_class.data","r") as f:
+with open(f"{dataset_root}/VOC_remain_class.data","r") as f:
     index = 0
     for line in f:
         IndexToClassName[index] = line
@@ -139,7 +147,7 @@ transfrom = transforms.Compose([
             transforms.Normalize(mean=(0.5,0.5,0.5),std=(0.5,0.5,0.5))
         ])
 
-test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000012.jpg"
+test_dir = f"{dataset_root}/Train/JPEGImages/000012.jpg"
 # test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000138.jpg"
 # test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000047.jpg"
 # test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000060.jpg"

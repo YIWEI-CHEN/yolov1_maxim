@@ -76,11 +76,11 @@ def log_init():
 
 # Initialize the dataset and dataloader
 def dataset_init(logger):
-
-    dataSet = YoloV1DataSet(imgs_dir="/data/yiwei/VOCdevkit/VOC2007/JPEGImages",
-                            annotations_dir="/data/yiwei/VOCdevkit/VOC2007/Annotations",
-                            ClassesFile="/data/yiwei/VOCdevkit/VOC2007/VOC_remain_class.data",
-                            train_root="/data/yiwei/VOCdevkit/VOC2007/ImageSets/Main/",
+    dataset_root = "/data/yiwei/VOC2007"
+    dataSet = YoloV1DataSet(imgs_dir=f"{dataset_root}/Train/JPEGImages",
+                            annotations_dir=f"{dataset_root}/Train/Annotations",
+                            ClassesFile=f"{dataset_root}/VOC_remain_class.data",
+                            train_root=f"{dataset_root}/Train/ImageSets/Main/",
                             img_per_class=eval(args.img_train),
                             ms_logger=logger)
 
