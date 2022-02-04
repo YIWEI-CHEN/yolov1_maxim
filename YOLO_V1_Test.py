@@ -60,17 +60,20 @@ ai8x.initiate_qat(Yolo, qat_policy)
 # checkpoint_fname = './log/QAT-20210714-230119/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16
 # checkpoint_fname = './log/QAT-20210715-030212/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep500.pth'   # batch_size 16 full training set
 # checkpoint_fname = './log/QAT-20210715-082952/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
-checkpoint_fname = './log/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
+# checkpoint_fname = './log/QAT-20210924-175040/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
+checkpoint_fname = './log/QAT-20220121-180131/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
 
 Yolo.load_state_dict(torch.load(checkpoint_fname, map_location=lambda storage, loc: storage)) # batch_size 16
 
+print(f'num_class: {dataSet.Classes}')
 
 ck_fname = checkpoint_fname.split("/")[-1]
 checkpoint_dir = checkpoint_fname.replace(ck_fname, "")
+print(f"checkpoint_dir {checkpoint_dir}")
 import distiller.apputils as apputils
 apputils.save_checkpoint(checkpoint_dir, "ai85net5", Yolo,
                             optimizer=None, scheduler=None, extras=None,
-                            is_best=False, name="Yolov1", dir=".",
+                            is_best=False, name="Yolov1", dir=checkpoint_dir,
                          )
 
 
@@ -147,7 +150,13 @@ transfrom = transforms.Compose([
             transforms.Normalize(mean=(0.5,0.5,0.5),std=(0.5,0.5,0.5))
         ])
 
-test_dir = f"{dataset_root}/Train/JPEGImages/000012.jpg"
+# car
+# test_dir = f"{dataset_root}/Train/JPEGImages/000012.jpg"
+# airplane
+# test_dir = f"{dataset_root}/Train/JPEGImages/000033.jpg"
+test_dir = f"{dataset_root}/Train/JPEGImages/000552.jpg"
+# people
+# test_dir = f"{dataset_root}/Train/JPEGImages/000035.jpg"
 # test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000138.jpg"
 # test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000047.jpg"
 # test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000060.jpg"
@@ -176,16 +185,29 @@ class_prob = bounding_boxes[0, :, :, [4,9]]
 # print(class_prob)
 # print(fl_y)
 
-NMS_boxes = NMS(bounding_boxes, img_size=224, confidence_threshold=0.5) # , confidence_threshold=1e-10,iou_threshold=0.)
+NMS_boxes = NMS(bounding_boxes, img_size=224, confidence_threshold=0.15) # , confidence_threshold=1e-10,iou_threshold=0.)
+# print(NMS_boxes)
 for box in NMS_boxes:
     print("HERE", box[0],box[1],box[2],box[3],box[4])
-    img_data_resize = cv2.rectangle(img_data_resize, (box[0],box[1]),(box[2],box[3]),(0,255,0),1)
-    img_data_resize = cv2.putText(img_data_resize, "class:{} confidence:{}".format(IndexToClassName[box[5]],box[4]),(box[0],box[1]),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+    # img_data_resize = cv2.rectangle(img_data_resize, (box[0],box[1]),(box[2],box[3]),(0,255,0),1)
+    # img_data_resize = cv2.putText(img_data_resize, "class:{} confidence:{}".format(IndexToClassName[box[5]],box[4]),(box[0],box[1]),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+    confidence = box[4]
+    class_index = box[5]
+    # print("class:{} confidence:{}".format(IndexToClassName[box[5]], box[4]))
+    box = np.array(box[0:4]).astype(np.int)
+    img_data_resize = cv2.rectangle(img_data_resize, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
+    img_data_resize = cv2.putText(img_data_resize, "confidence:{:.2f}".format(confidence), (box[0], box[1]),
+                                  cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1)
     # break
 
-print(img_data_resize.shape)
-plt.imshow(img_data_resize)
-plt.show()
+test_img_name = os.path.basename(test_dir)
+pred_img = os.path.join(PROJECT_ROOT, f"{test_img_name.split('.')[0]}_pred.jpg")
+print(pred_img)
+cv2.imwrite(pred_img, img_data_resize)
+
+# print(img_data_resize.shape)
+# plt.imshow(img_data_resize)
+# plt.show()
 
 # cv2.imwrite('img.png', img_data)
 # cv2.waitKey()
