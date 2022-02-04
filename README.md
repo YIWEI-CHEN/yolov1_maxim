@@ -1,5 +1,5 @@
 # yolov1_maxim
- This repo covers the MAX78000 model training and synthesis pipeline for the YOLO v1 model.
+This repo covers the MAX78000 model training and synthesis pipeline for the YOLO v1 model.
 
 ---
 
@@ -82,6 +82,7 @@ The follow links contains previous trained models and logs.
 ---
 
 ### Environment setup
+Note that Python >= 3.8
 ```bash
 $ git clone git@github.com:YIWEI-CHEN/yolov1_maxim.git
 $ cd yolov1_maxim
@@ -90,16 +91,26 @@ $ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-training.git
 $ git clone --recursive https://github.com/MaximIntegratedAI/ai8x-synthesis.git
 
 # in your virtual environment
-# the following torch installation for NVIDIA RTX A5000
-$ pip install torch==1.8.0+cu111 torchvision==0.9.0+cu111 torchaudio==0.8.0 -f https://download.pytorch.org/whl/torch_stable.htm
-$ pip tensorboard matplotlib numpy
+# install pytorch for NVIDIA RTX A5000
+$ pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
+# install distiller
 $ cd yolov1_maxim/ai8x-training/distiller
 # remove lines of numpy, torch, torchvision in requirements.txt
 $ pip install -e .
+
+# install other packages
+$ pip install tensorboard matplotlib numpy colorama yamllint onnx PyGithub GitPython opencv-python
 ```
 
 ---
 ### Reference
 * The repo starts from https://www.dropbox.com/s/pssda2gxrqa51v9/yolov1_maxim.zip?dl=0
 * The YOLOv1 train and test framework are from https://github.com/ProgrammerZhujinming/YOLOv1
+
+---
+### Contributors
+
+* Guanchu Wang (gw22@rice.edu)
+  
+* Yi-Wei Chen (yiwei_chen@tamu.edu)
