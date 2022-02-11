@@ -61,14 +61,14 @@ class YoloV1DataSet(Dataset):
             self.annotation_path.append(os.path.join(annotations_dir, annotation_name))
 
     def generate_ClassNameToInt(self, ClassesFile):
-        self.ClassNameToInt = {}
+        self.ClassNameToInt = {'background': 0}
         # self.instance_counting = {}
-        self.IntToClassName = {}
-        classIndex = 0
+        self.IntToClassName = {0: 'background'}
+        classIndex = 1
         with open(ClassesFile, 'r') as f:
             for line in f:
                 line = line.replace('\n', '')
-                self.ClassNameToInt[line] = classIndex  # 根据类别名制作索引
+                self.ClassNameToInt[line] = classIndex
                 self.IntToClassName[classIndex] = line
                 # self.instance_counting[line] = 0
                 classIndex = classIndex + 1
@@ -169,7 +169,10 @@ class YoloV1DataSet(Dataset):
                 for j in range(self.S):
                     if len(ground_truth[i][j]) == 0:
                         #print(self.Classes,"class")
-                        self.ground_truth[ground_truth_index][i][j].append([0 for i in range(10 + self.Classes)])
+                        ClassList = [0 for i in range(self.Classes)]
+                        ClassList[0] = 1
+                        dummy_arr = [0 for _ in range(10)] + ClassList
+                        self.ground_truth[ground_truth_index][i][j].append(dummy_arr)
                     else:
                         ground_truth[i][j].sort(key = lambda box: box[9], reverse=True)
                         self.ground_truth[ground_truth_index][i][j].append(ground_truth[i][j][0])

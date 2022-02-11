@@ -67,14 +67,14 @@ Yolo.load_state_dict(torch.load(checkpoint_fname, map_location=lambda storage, l
 
 print(f'num_class: {dataSet.Classes}')
 
-ck_fname = checkpoint_fname.split("/")[-1]
-checkpoint_dir = checkpoint_fname.replace(ck_fname, "")
-print(f"checkpoint_dir {checkpoint_dir}")
-import distiller.apputils as apputils
-apputils.save_checkpoint(checkpoint_dir, "ai85net5", Yolo,
-                            optimizer=None, scheduler=None, extras=None,
-                            is_best=False, name="Yolov1", dir=checkpoint_dir,
-                         )
+# ck_fname = checkpoint_fname.split("/")[-1]
+# checkpoint_dir = checkpoint_fname.replace(ck_fname, "")
+# print(f"checkpoint_dir {checkpoint_dir}")
+# import distiller.apputils as apputils
+# apputils.save_checkpoint(checkpoint_dir, "ai85net5", Yolo,
+#                             optimizer=None, scheduler=None, extras=None,
+#                             is_best=False, name="Yolov1", dir=checkpoint_dir,
+#                          )
 
 
 # class to index
@@ -153,8 +153,9 @@ transfrom = transforms.Compose([
 # car
 # test_dir = f"{dataset_root}/Train/JPEGImages/000012.jpg"
 # airplane
-# test_dir = f"{dataset_root}/Train/JPEGImages/000033.jpg"
-test_dir = f"{dataset_root}/Train/JPEGImages/000552.jpg"
+test_dir = f"{dataset_root}/Train/JPEGImages/000033.jpg"
+# test_dir = f"{dataset_root}/Train/JPEGImages/000552.jpg"
+# test_dir = f"{dataset_root}/Train/JPEGImages/009911.jpg"
 # people
 # test_dir = f"{dataset_root}/Train/JPEGImages/000035.jpg"
 # test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000138.jpg"

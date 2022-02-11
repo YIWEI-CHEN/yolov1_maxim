@@ -81,7 +81,7 @@ def dataset_init(logger):
                             annotations_dir=f"{dataset_root}/Train/Annotations",
                             ClassesFile=f"{dataset_root}/VOC_remain_class.data",
                             train_root=f"{dataset_root}/Train/ImageSets/Main/",
-                            img_per_class=eval(args.img_train),
+                            # img_per_class=eval(args.img_train),
                             ms_logger=logger)
 
     # dataSet = YoloV1DataSet(imgs_dir="../YOLO_V1_GPU/VOC2007/Train/JPEGImages",
@@ -130,6 +130,7 @@ def train(logger):
         epoch_iou = 0
         epoch_object_num = 0
         scheduler.step()
+        grid_size, img_size = dataSet.grid_cell_size, dataSet.img_size
 
         if epoch > 0 and epoch == qat_policy['start_epoch']:
             logger.info('QAT is starting!')
@@ -159,7 +160,8 @@ def train(logger):
 
 
             bb_pred, _ = Yolo(train_data)
-            loss = loss_function(bounding_boxes=bb_pred,ground_truth=label_data)
+            loss = loss_function(bounding_boxes=bb_pred, ground_truth=label_data,
+                                 grid_size=grid_size, img_size=img_size)
             batch_loss = loss[0]
             loss_coord = loss_coord + loss[1]
             loss_confidence = loss_confidence + loss[2]
@@ -183,7 +185,8 @@ def train(logger):
 
         batch_num = len(dataLoader)
         avg_loss= loss_sum/batch_num
-        logger.info("epoch : {} ; loss : {} ; avg_loss: {}".format(epoch,{loss_sum},{avg_loss}))
+        logger.info("epoch : {} ; loss : {} ; avg_loss: {}; IOU: {}; class SSE: {}".format(
+            epoch, loss_sum, avg_loss, epoch_iou, loss_classes))
 
         epoch = epoch + 1
     torch.save(Yolo.state_dict(), os.path.join(args.output_dir, "scaled224_noaffine_shift{}_maxim_yolo_qat_ep{}.pth".format(qat_policy["shift_quantile"], epoch)))

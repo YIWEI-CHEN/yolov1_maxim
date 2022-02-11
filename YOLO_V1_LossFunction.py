@@ -54,7 +54,7 @@ class Yolov1_Loss(nn.Module):
             
         return interSection / (predict_Area + ground_Area - interSection)
 
-    def forward(self, bounding_boxes, ground_truth, batch_size=32,grid_size=64, img_size=448):  # 输入是 S * S * ( 2 * B + Classes)
+    def forward(self, bounding_boxes, ground_truth, batch_size=32, grid_size=64, img_size=448):  # 输入是 S * S * ( 2 * B + Classes)
         # 定义三个计算损失的变量 正样本定位损失 样本置信度损失 样本类别损失
         loss = 0
         loss_coord = 0
@@ -84,11 +84,20 @@ class Yolov1_Loss(nn.Module):
                         loss_confidence += self.l_noobj * math.pow(predict_box[4].item(), 2)
                     else:
                         object_num = object_num + 1
-                        iou = self.iou(predict_box, ground_truth[batch][i][j][0], j * 64, i * 64)
+                        iou = self.iou(predict_box, ground_truth[batch][i][j][0], j * grid_size, i * grid_size,
+                                       img_size=img_size, grid_size=grid_size)
                         iou_sum = iou_sum + iou
                         ground_box = ground_truth[batch][i][j][0]
-                        loss = loss + self.l_coord * (torch.pow((ground_box[0] - predict_box[0]), 2) + torch.pow((ground_box[1] - predict_box[1]), 2) + torch.pow(torch.sqrt(ground_box[2] + 1e-8) - torch.sqrt(predict_box[2] + 1e-8), 2) + torch.pow(torch.sqrt(ground_box[3] + 1e-8) - torch.sqrt(predict_box[3] + 1e-8), 2))
-                        loss_coord += self.l_coord * (math.pow((ground_box[0] - predict_box[0]), 2) + math.pow((ground_box[1] - predict_box[1]), 2) + math.pow(math.sqrt(ground_box[2] + 1e-8) - math.sqrt(predict_box[2] + 1e-8), 2) + math.pow(math.sqrt(ground_box[3] + 1e-8) - math.sqrt(predict_box[3] + 1e-8), 2))
+                        loss = loss + self.l_coord * (
+                                torch.pow((ground_box[0] - predict_box[0]), 2) +
+                                torch.pow((ground_box[1] - predict_box[1]), 2) +
+                                torch.pow(torch.sqrt(ground_box[2] + 1e-8) - torch.sqrt(predict_box[2] + 1e-8), 2) +
+                                torch.pow(torch.sqrt(ground_box[3] + 1e-8) - torch.sqrt(predict_box[3] + 1e-8), 2))
+                        loss_coord += self.l_coord * (
+                                math.pow((ground_box[0] - predict_box[0]), 2) +
+                                math.pow((ground_box[1] - predict_box[1]), 2) +
+                                math.pow(math.sqrt(ground_box[2] + 1e-8) - math.sqrt(predict_box[2] + 1e-8), 2) +
+                                math.pow(math.sqrt(ground_box[3] + 1e-8) - math.sqrt(predict_box[3] + 1e-8), 2))
                         loss = loss + torch.pow(ground_box[4] - predict_box[4], 2)
                         loss_confidence += math.pow(ground_box[4] - predict_box[4], 2)
                         ground_class = ground_box[10:]
