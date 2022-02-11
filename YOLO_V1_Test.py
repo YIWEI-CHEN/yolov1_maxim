@@ -47,43 +47,46 @@ Yolo.load_state_dict(torch.load(checkpoint_fname, map_location=lambda storage, l
 #                          )
 
 if __name__ == '__main__':
-    dir_name = os.path.join(os.path.dirname(checkpoint_fname), "bad_predictions")
-    os.makedirs(dir_name, exist_ok=True)
+    for dir_suffix, img_list in [
+        ("predictions", [0, 14, 21, 54, 67, 90, 107, 118, 119, 124, 178]),
+        ("bad_predictions", [7, 9, 28, 48, 58, 61, 94, 108, 109, 111, 125, 170]),
+    ]:
+        dir_name = os.path.join(os.path.dirname(checkpoint_fname), dir_suffix)
+        os.makedirs(dir_name, exist_ok=True)
+        for img_idx in img_list:
+            img_data = dataSet.read_img(item=img_idx)
+            img_name = os.path.basename(dataSet.img_path[img_idx])
+            train_data, ground_truth = dataSet[img_idx]
 
-    # for img_idx in [0, 14, 21, 54, 67, 90, 107, 118, 119, 124, 178]:
-    for img_idx in [7, 9, 28, 48, 58, 61, 94, 108, 109, 111, 125, 170]:
-        img_data = dataSet.read_img(item=img_idx)
-        img_name = os.path.basename(dataSet.img_path[img_idx])
-        train_data, ground_truth = dataSet[img_idx]
+            ground_truth = torch.unsqueeze(ground_truth, 0)
+            ground_truth = ground_truth.squeeze(dim=3)
+            ground_truth = gt_std(ground_truth)[0]
 
-        ground_truth = torch.unsqueeze(ground_truth, 0)
-        ground_truth = ground_truth.squeeze(dim=3)
-        ground_truth = gt_std(ground_truth)[0]
+            # draw ground truth
+            for box in ground_truth:
+                box = np.array(box[0:4]).astype(np.int)
+                img_data = cv2.rectangle(img_data, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+                img_data = cv2.putText(img_data, "ground truth", (box[0], box[3] + 15),
+                                       cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 2)
 
-        # draw ground truth
-        for box in ground_truth:
-            img_data = cv2.rectangle(img_data, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
-            img_data = cv2.putText(img_data, "ground truth", (box[0], box[3] + 15),
-                                   cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 2)
+            # predict
+            train_data = torch.unsqueeze(train_data, 0)
+            print(f'Predicting {img_name}')
+            pred_results, _ = Yolo(train_data)
+            NMS_boxes = NMS(bounding_boxes=pred_results)[0]
+            for i, box in enumerate(NMS_boxes):
+                for j, gt_box in enumerate(ground_truth):
+                    iou = IOU(gt_box, box)
+                    print(f'IOU between {i} pred_box with {j} ground_truth_box: {iou}')
+                has_obj_prob = box[4]
+                class_index = box[-1]
+                # convert box from float to int
+                box = np.array(box[0:4]).astype(np.int)
+                # draw predicted box
+                img_data = cv2.rectangle(img_data, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 2)
+                img_data = cv2.putText(img_data, "prob:{:.2f}".format(has_obj_prob), (box[0], box[1] - 4),
+                                              cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 2)
 
-        # predict
-        train_data = torch.unsqueeze(train_data, 0)
-        print(f'Predicting {img_name}')
-        pred_results, _ = Yolo(train_data)
-        NMS_boxes = NMS(bounding_boxes=pred_results)[0]
-        for i, box in enumerate(NMS_boxes):
-            for j, gt_box in enumerate(ground_truth):
-                iou = IOU(gt_box, box)
-                print(f'IOU between {i} pred_box with {j} ground_truth_box: {iou}')
-            has_obj_prob = box[4]
-            class_index = box[-1]
-            # convert box from float to int
-            box = np.array(box[0:4]).astype(np.int)
-            # draw predicted box
-            img_data = cv2.rectangle(img_data, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 2)
-            img_data = cv2.putText(img_data, "prob:{:.2f}".format(has_obj_prob), (box[0], box[1] - 4),
-                                          cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 2)
-
-        # save result
-        pred_img = os.path.join(dir_name, f"{img_name.split('.')[0]}_pred.jpg")
-        cv2.imwrite(pred_img, img_data)
+            # save result
+            pred_img = os.path.join(dir_name, f"{img_name.split('.')[0]}_pred.jpg")
+            cv2.imwrite(pred_img, img_data)
