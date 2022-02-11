@@ -291,8 +291,8 @@ def NMS(bounding_boxes, S=7, img_size=224, confidence_threshold=0.5, iou_thresho
         nms_boxes = []
         for i in range(S):
             for j in range(S):
-                gridX = grid_size * i
-                gridY = grid_size * j
+                gridX = grid_size * j
+                gridY = grid_size * i
                 if bounding_boxes[batch][i][j][4] < bounding_boxes[batch][i][j][9]:
                     bounding_box = bounding_boxes[batch][i][j][5:10]
                 else:
@@ -341,8 +341,8 @@ def gt_std(gt_results, S=7, B=2, img_size=224):
         gt_results_instance = []
         for index_i in range(gt_results.shape[1]): # 7
             for index_j in range(gt_results.shape[2]): # 7
-                gridX = grid_size * index_i
-                gridY = grid_size * index_j
+                gridX = grid_size * index_j
+                gridY = grid_size * index_i
                 area = gt_results[instance_index, index_i, index_j, 9]
                 if area > 0:
                     gt_results_patch = gt_results[instance_index, index_i, index_j].tolist()
