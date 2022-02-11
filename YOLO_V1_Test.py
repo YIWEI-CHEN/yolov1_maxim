@@ -1,71 +1,41 @@
-# 网络加载
 import os
-
-import torch
-import numpy as np
-import cv2
-import torch
-from torchvision import transforms
-
-import matplotlib.pyplot as plt
-
-
 import sys
 
 # go to the directory of ai8x
 PROJECT_ROOT = os.path.join(os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "ai8x-training"))
 
-import ai8x
-# from batchnormfuser import bn_fuser
-
-dataset_root = "/data/yiwei/VOC2007"
-
-ai8x.set_device(85, simulate=False, round_avg=False, verbose=True)
-
+import cv2
+import numpy as np
+import torch
 import importlib
-mod = importlib.import_module("yolov1_bn_model_noaffine")
 
-# from YOLO_V1_DataSet_small import YoloV1DataSet
-# dataSet = YoloV1DataSet(imgs_dir="../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages",
-#                         annotations_dir="../../../../../YOLO_V1_GPU/VOC2007/Train/Annotations",
-#                         ClassesFile="../../VOC_remain_class.data",
-#                         data_path='../../../../../YOLO_V1_GPU/VOC2007/Train/ImageSets/Main')
-
+import ai8x
 from YOLO_V1_DataSet import YoloV1DataSet
-dataSet = YoloV1DataSet(imgs_dir=f"{dataset_root}/Train/JPEGImages",
-                            annotations_dir=f"{dataset_root}/Train/Annotations",
-                            ClassesFile=f"{dataset_root}/VOC_remain_class.data",
-                            train_root=f"{dataset_root}/Train/ImageSets/Main/",
-                            img_per_class=100)
+from map import NMS, gt_std, IOU
 
+
+# loading dataset
+dataset_root = "/data/yiwei/VOC2007"
+dataSet = YoloV1DataSet(imgs_dir=f"{dataset_root}/Test/JPEGImages",
+                        annotations_dir=f"{dataset_root}/Test/Annotations",
+                        ClassesFile=f"{dataset_root}/VOC_remain_class.data",
+                        train_root=f"{dataset_root}/Test/ImageSets/Main/",
+                        )
+
+# loading model
+ai8x.set_device(85, simulate=False, round_avg=False, verbose=True)
+mod = importlib.import_module("yolov1_bn_model_noaffine")
 Yolo = mod.Yolov1_net(num_classes=dataSet.Classes, bias=True)
-
-qat_policy = {'start_epoch':150,
-              'weight_bits':8,
-              'bias_bits':8,
+qat_policy = {'start_epoch': 150,
+              'weight_bits': 8,
+              'bias_bits': 8,
               'shift_quantile': 0.99}
-
 ai8x.fuse_bn_layers(Yolo)
 ai8x.initiate_qat(Yolo, qat_policy)
 
-# checkpoint_fname = './weight_20210711/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep0400.pth'        # Zaid
-# checkpoint_fname = './log/QAT-20210711-064558/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth' # YOLO.train()
-# checkpoint_fname = './yolo_models_test/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep0400.pth'       # Zaid 2
-# checkpoint_fname = './log/QAT-20210712-003214/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep300.pth' # dataset v2
-# checkpoint_fname = './log/QAT-20210711-203619/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep300.pth' # whole dataset
-# checkpoint_fname = './log/QAT-20210712-024843/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep350.pth' # batch_size 64
-# checkpoint_fname = './log/QAT-20210712-033721/scaled22x4_noaffine_shift0.99_maxim_yolo_qat_ep400.pth' # batch_size 16 seed 7
-# checkpoint_fname = './log/QAT-20210712-042211/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16
-# checkpoint_fname = './log/QAT-20210714-230119/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16
-# checkpoint_fname = './log/QAT-20210715-030212/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep500.pth'   # batch_size 16 full training set
-# checkpoint_fname = './log/QAT-20210715-082952/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
-# checkpoint_fname = './log/QAT-20210924-175040/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
-checkpoint_fname = './log/QAT-20220121-180131/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep400.pth'   # batch_size 16 full training set
-
+checkpoint_fname = './log/QAT-20220210-174132/scaled224_noaffine_shift0.99_maxim_yolo_qat_ep200.pth'
 Yolo.load_state_dict(torch.load(checkpoint_fname, map_location=lambda storage, loc: storage)) # batch_size 16
-
-print(f'num_class: {dataSet.Classes}')
 
 # ck_fname = checkpoint_fname.split("/")[-1]
 # checkpoint_dir = checkpoint_fname.replace(ck_fname, "")
@@ -76,139 +46,44 @@ print(f'num_class: {dataSet.Classes}')
 #                             is_best=False, name="Yolov1", dir=checkpoint_dir,
 #                          )
 
+if __name__ == '__main__':
+    dir_name = os.path.join(os.path.dirname(checkpoint_fname), "bad_predictions")
+    os.makedirs(dir_name, exist_ok=True)
 
-# class to index
-IndexToClassName = {}
-with open(f"{dataset_root}/VOC_remain_class.data","r") as f:
-    index = 0
-    for line in f:
-        IndexToClassName[index] = line
-        index = index + 1
+    # for img_idx in [0, 14, 21, 54, 67, 90, 107, 118, 119, 124, 178]:
+    for img_idx in [7, 9, 28, 48, 58, 61, 94, 108, 109, 111, 125, 170]:
+        img_data = dataSet.read_img(item=img_idx)
+        img_name = os.path.basename(dataSet.img_path[img_idx])
+        train_data, ground_truth = dataSet[img_idx]
 
-def iou(box_one, box_two):
-    LX = max(box_one[0], box_two[0])
-    LY = max(box_one[1], box_two[1])
-    RX = min(box_one[2], box_two[2])
-    RY = min(box_one[3], box_two[3])
-    if LX >= RX or LY >= RY:
-        return 0
-    return (RX - LX) * (RY - LY) / ((box_one[2]-box_one[0]) * (box_one[3] - box_one[1]) + (box_two[2]-box_two[0]) * (box_two[3] - box_two[1]))
+        ground_truth = torch.unsqueeze(ground_truth, 0)
+        ground_truth = ground_truth.squeeze(dim=3)
+        ground_truth = gt_std(ground_truth)[0]
 
-def NMS(bounding_boxes,S=7,B=2,img_size=448,confidence_threshold=0.55,iou_threshold=0.2):
-    bounding_boxes = bounding_boxes.cpu().detach().numpy().tolist()
-    predict_boxes = []
-    nms_boxes = []
-    grid_size = img_size / S
-    for batch in range(len(bounding_boxes)):
-        for i in range(S):
-            for j in range(S):
-                gridX = grid_size * i
-                gridY = grid_size * j
-                if bounding_boxes[batch][i][j][4] < bounding_boxes[batch][i][j][9]:
-                    bounding_box = bounding_boxes[batch][i][j][5:10]
-                else:
-                    bounding_box = bounding_boxes[batch][i][j][0:5]
-                bounding_box.extend(bounding_boxes[batch][i][j][10:])
-                if bounding_box[4] >= confidence_threshold:
-                    predict_boxes.append(bounding_box)
+        # draw ground truth
+        for box in ground_truth:
+            img_data = cv2.rectangle(img_data, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 2)
+            img_data = cv2.putText(img_data, "ground truth", (box[0], box[3] + 15),
+                                   cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 2)
 
-                centerX = (int)(gridX + bounding_box[0] * grid_size)
-                centerY = (int)(gridY + bounding_box[1] * grid_size)
-                width = (int)(bounding_box[2] * img_size)
-                height = (int)(bounding_box[3] * img_size)
-                bounding_box[0] = max(0, (int)(centerX - width / 2))
-                bounding_box[1] = max(0, (int)(centerY - height / 2))
-                bounding_box[2] = min(img_size - 1, (int)(centerX + width / 2))
-                bounding_box[3] = min(img_size - 1, (int)(centerY + height / 2))
+        # predict
+        train_data = torch.unsqueeze(train_data, 0)
+        print(f'Predicting {img_name}')
+        pred_results, _ = Yolo(train_data)
+        NMS_boxes = NMS(bounding_boxes=pred_results)[0]
+        for i, box in enumerate(NMS_boxes):
+            for j, gt_box in enumerate(ground_truth):
+                iou = IOU(gt_box, box)
+                print(f'IOU between {i} pred_box with {j} ground_truth_box: {iou}')
+            has_obj_prob = box[4]
+            class_index = box[-1]
+            # convert box from float to int
+            box = np.array(box[0:4]).astype(np.int)
+            # draw predicted box
+            img_data = cv2.rectangle(img_data, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 2)
+            img_data = cv2.putText(img_data, "prob:{:.2f}".format(has_obj_prob), (box[0], box[1] - 4),
+                                          cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 2)
 
-                # print(centerX, centerY, width, height)
-
-        while len(predict_boxes) != 0:
-            predict_boxes.sort(key=lambda box:box[4])
-            assured_box = predict_boxes[0]
-            temp = []
-            classIndex = np.argmax(assured_box[5:])
-            print("Class index:{}".format(classIndex), "Confidence:", assured_box)
-            assured_box[4] = assured_box[4] * assured_box[5 + classIndex] #修正置信度为 物体分类准确度 × 含有物体的置信度
-            assured_box[5] = classIndex
-            nms_boxes.append(assured_box)
-            i = 1
-            while i < len(predict_boxes):
-                if iou(assured_box,predict_boxes[i]) <= iou_threshold:
-                    temp.append(predict_boxes[i])
-                i = i + 1
-            predict_boxes = temp
-
-        return nms_boxes
-
-
-# 读取测试数据
-transfrom = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Resize((224,224)),
-            transforms.ToTensor(), # hui zi dong bian huan tong dao
-            transforms.Normalize(mean=(0.5,0.5,0.5),std=(0.5,0.5,0.5))
-        ])
-
-# car
-# test_dir = f"{dataset_root}/Train/JPEGImages/000012.jpg"
-# airplane
-test_dir = f"{dataset_root}/Train/JPEGImages/000033.jpg"
-# test_dir = f"{dataset_root}/Train/JPEGImages/000552.jpg"
-# test_dir = f"{dataset_root}/Train/JPEGImages/009911.jpg"
-# people
-# test_dir = f"{dataset_root}/Train/JPEGImages/000035.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000138.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000047.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000060.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000083.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000282.jpg"
-
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000012.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000138.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000050.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000089.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000540.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000860.jpg"
-# test_dir = "../../../../../YOLO_V1_GPU/VOC2007/Train/JPEGImages/000133.jpg"
-
-img_data = cv2.imread(test_dir)
-img_data_resize = cv2.resize(img_data,(224,224),interpolation=cv2.INTER_AREA)
-
-train_data = transfrom(img_data).float()
-# print(train_data.shape)
-train_data = torch.unsqueeze(train_data, 0)
-# print(train_data.shape)
-bounding_boxes, fl_y = Yolo(train_data)
-# print(bounding_boxes.shape)
-
-class_prob = bounding_boxes[0, :, :, [4,9]]
-# print(class_prob)
-# print(fl_y)
-
-NMS_boxes = NMS(bounding_boxes, img_size=224, confidence_threshold=0.15) # , confidence_threshold=1e-10,iou_threshold=0.)
-# print(NMS_boxes)
-for box in NMS_boxes:
-    print("HERE", box[0],box[1],box[2],box[3],box[4])
-    # img_data_resize = cv2.rectangle(img_data_resize, (box[0],box[1]),(box[2],box[3]),(0,255,0),1)
-    # img_data_resize = cv2.putText(img_data_resize, "class:{} confidence:{}".format(IndexToClassName[box[5]],box[4]),(box[0],box[1]),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-    confidence = box[4]
-    class_index = box[5]
-    # print("class:{} confidence:{}".format(IndexToClassName[box[5]], box[4]))
-    box = np.array(box[0:4]).astype(np.int)
-    img_data_resize = cv2.rectangle(img_data_resize, (box[0], box[1]), (box[2], box[3]), (0, 255, 0), 1)
-    img_data_resize = cv2.putText(img_data_resize, "confidence:{:.2f}".format(confidence), (box[0], box[1]),
-                                  cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1)
-    # break
-
-test_img_name = os.path.basename(test_dir)
-pred_img = os.path.join(PROJECT_ROOT, f"{test_img_name.split('.')[0]}_pred.jpg")
-print(pred_img)
-cv2.imwrite(pred_img, img_data_resize)
-
-# print(img_data_resize.shape)
-# plt.imshow(img_data_resize)
-# plt.show()
-
-# cv2.imwrite('img.png', img_data)
-# cv2.waitKey()
+        # save result
+        pred_img = os.path.join(dir_name, f"{img_name.split('.')[0]}_pred.jpg")
+        cv2.imwrite(pred_img, img_data)

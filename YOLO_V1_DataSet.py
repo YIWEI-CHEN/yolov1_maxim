@@ -196,11 +196,14 @@ class YoloV1DataSet(Dataset):
     def __getitem__(self, item):
         # height * width * channel
         #print(len(self.img_path),"KKKKKKK")
-        img_data = cv2.imread(self.img_path[item])
-        img_data = cv2.resize(img_data, (224, 224), interpolation=cv2.INTER_AREA)
-        
+        img_data = self.read_img(item)
         img_data = self.transfrom(img_data)
-        return img_data,self.ground_truth[item]
+        return img_data, self.ground_truth[item]
 
     def __len__(self):
         return len(self.img_path)
+
+    def read_img(self, item):
+        img_data = cv2.imread(self.img_path[item])
+        img_data = cv2.resize(img_data, (self.img_size, self.img_size), interpolation=cv2.INTER_AREA)
+        return img_data
