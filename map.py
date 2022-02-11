@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def calculate_map_main(gt_results, pred_results, iou_gt_thr=0.5, class_num=5):
     '''
     说明: 此函数用于计算目标检测中的mAP
@@ -33,6 +34,7 @@ def calculate_map_main(gt_results, pred_results, iou_gt_thr=0.5, class_num=5):
     for i in range(data_num):
         gt_result = gt_results[i]
         pred_result = pred_results[i]
+        # print(f'computing {i} tp and fp')
         tp, fp, score, gt_num = calculate_tpfp_single(gt_result, pred_result, iou_gt_thr, class_num)
         # 按类别更新到总数中
         for n in range(class_num):
@@ -43,7 +45,7 @@ def calculate_map_main(gt_results, pred_results, iou_gt_thr=0.5, class_num=5):
 
     # 计算出各类的AP，进而得到mAP
     all_map = calculate_map(all_tp, all_fp, all_score, all_gt_num, class_num)
-    mean_ap = np.mean(all_map)
+    mean_ap = np.mean(all_map[1:])
     print('mAP', mean_ap)
     return all_map, mean_ap
 
@@ -84,7 +86,7 @@ def calculate_tpfp_single(gt_result, pred_result, iou_gt_thr, class_num):
         fp = []
         score = []
 
-        match_gt_bbox = [obj[0:4] for obj in gt_result if int(obj[4] - 1) == i]
+        match_gt_bbox = [obj[0:4] for obj in gt_result if int(obj[4]) == i]
         match_pred_bbox = [obj[0:4] for obj in pred_result if int(obj[4]) == i]
         match_pred_score = [obj[5] for obj in pred_result if int(obj[4]) == i]
 
@@ -103,7 +105,10 @@ def calculate_tpfp_single(gt_result, pred_result, iou_gt_thr, class_num):
             score.extend(match_pred_score)
             ious = calculate_iou(match_gt_bbox, match_pred_bbox)
             max_iou = np.max(ious, axis=0)  # [x,x,x...] 每一个预测框与某个gt最大的iou
-
+            # if any(s > 0.65 for s in max_iou):
+            #     print(f"The image has good IOU: {max_iou}")
+            # if any(s < 0.1 for s in max_iou):
+                # print(f"The image has bad IOU: {max_iou}")
             # 使用iou_gt_thr来进行正负样本的判定，若满足条件，则为tp，否则为fp
             for k in range(len_pred):
                 if max_iou[k] >= iou_gt_thr:
@@ -118,7 +123,6 @@ def calculate_tpfp_single(gt_result, pred_result, iou_gt_thr, class_num):
         all_score[i].extend(score)
         gt_num[i] += len_gt
 
-
     return all_tp, all_fp, all_score, gt_num
 
 
@@ -130,6 +134,7 @@ def calculate_area(bbox):
     h = max(0, h)
     return w * h
 
+
 def calculate_inter(bbox1, bbox2):
     # 计算两个bbox的交集面积
     xmin = max(bbox1[0], bbox2[0])
@@ -137,6 +142,7 @@ def calculate_inter(bbox1, bbox2):
     xmax = min(bbox1[2], bbox2[2])
     ymax = min(bbox1[3], bbox2[3])
     return calculate_area([xmin, ymin, xmax, ymax])
+
 
 def calculate_union(bbox1, bbox2):
     # 计算两个bbox的并集面积
@@ -146,12 +152,14 @@ def calculate_union(bbox1, bbox2):
     union = area1 + area2 - inter
     return union
 
+
 def IOU(bbox1, bbox2):
     # 计算两个bbox的iou
     inter = calculate_inter(bbox1, bbox2)
     union = calculate_union(bbox1, bbox2)
     iou = inter / union
     return iou
+
 
 def calculate_iou(bbox1, bbox2):
     '''
@@ -257,18 +265,24 @@ def calculate_map_single(P, R):
     return single_map
 
 
+def NMS(bounding_boxes, S=7, img_size=224, confidence_threshold=0.5, iou_threshold=0.5):
+    """Compute non max suppressing to reduce overlapping bounding box.
 
-def iou(box_one, box_two):
-    LX = max(box_one[0], box_two[0])
-    LY = max(box_one[1], box_two[1])
-    RX = min(box_one[2], box_two[2])
-    RY = min(box_one[3], box_two[3])
-    if LX >= RX or LY >= RY:
-        return 0
-    return (RX - LX) * (RY - LY) / ((box_one[2]-box_one[0]) * (box_one[3] - box_one[1]) + (box_two[2]-box_two[0]) * (box_two[3] - box_two[1]))
+    Args:
+        bounding_boxes (list): a list of bounding box.
+        S (int): the number of grid cells.
+        img_size (int): image size
+        confidence_threshold (float): the threshold to select a box on has_obj_prob (has_object_probability).
+        iou_threshold (float): the threshold of IOU to remove bounding boxes.
 
+    Returns:
+        a list of bounding boxes.
+        bounding box format = [center_x (int), center_y (int), width (int), height (int), has_obj_prob (float),
+                               class_probs (float), confident_score (float), class_id (int)].
+            class_probs is a list of class probability. confident_score = has_obj_prob * max(class_prob).
+            class_id is argmax(class_probs).
 
-def NMS(bounding_boxes,S=7,B=2,img_size=448,confidence_threshold=0.55,iou_threshold=0.2):
+    """
     bounding_boxes = bounding_boxes.cpu().detach().numpy().tolist()
     nms_boxes_buf = []
     grid_size = img_size / S
@@ -295,21 +309,21 @@ def NMS(bounding_boxes,S=7,B=2,img_size=448,confidence_threshold=0.55,iou_thresh
                 bounding_box[1] = max(0, (int)(centerY - height / 2))
                 bounding_box[2] = min(img_size - 1, (int)(centerX + width / 2))
                 bounding_box[3] = min(img_size - 1, (int)(centerY + height / 2))
-
-                # print(centerX, centerY, width, height)
+                class_idx = np.argmax(bounding_box[5:])
+                confident_score = bounding_box[4] * bounding_box[5 + class_idx]  # has_obj_prob * class_prob
+                bounding_box.append(confident_score)
+                bounding_box.append(class_idx)
 
         while len(predict_boxes) != 0:
-            predict_boxes.sort(key=lambda box:box[4])
+            predict_boxes.sort(key=lambda box: box[4])
             assured_box = predict_boxes[0]
+            curr_class = assured_box[-1]
             temp = []
-            classIndex = np.argmax(assured_box[5:])
-            # print("Class index:{}".format(classIndex), "Confidence:", assured_box)
-            assured_box[4] = assured_box[4] * assured_box[5 + classIndex] #修正置信度为 物体分类准确度 × 含有物体的置信度
-            assured_box[5] = classIndex
             nms_boxes.append(assured_box)
             i = 1
             while i < len(predict_boxes):
-                if iou(assured_box,predict_boxes[i]) <= iou_threshold:
+                compared_box = predict_boxes[i]
+                if compared_box[-1] != curr_class or IOU(assured_box, predict_boxes[i]) <= iou_threshold:
                     temp.append(predict_boxes[i])
                 i = i + 1
             predict_boxes = temp
@@ -317,7 +331,6 @@ def NMS(bounding_boxes,S=7,B=2,img_size=448,confidence_threshold=0.55,iou_thresh
         nms_boxes_buf.append(nms_boxes)
 
     return nms_boxes_buf
-
 
 
 def gt_std(gt_results, S=7, B=2, img_size=224):
@@ -342,14 +355,9 @@ def gt_std(gt_results, S=7, B=2, img_size=224):
                     gt_results_patch[1] = max(0, (int)(centerY - height / 2))
                     gt_results_patch[2] = min(img_size - 1, (int)(centerX + width / 2))
                     gt_results_patch[3] = min(img_size - 1, (int)(centerY + height / 2))
-                    gt_results_patch[4] = class_idx + 1
+                    gt_results_patch[4] = class_idx
                     gt_results_instance.append(gt_results_patch[0:5])
 
         gt_results_all.append(gt_results_instance)
 
     return gt_results_all
-
-
-
-
-
