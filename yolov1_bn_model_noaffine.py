@@ -16,7 +16,7 @@ class Yolov1_net(nn.Module):
 
     def __init__(self, B=2, num_classes=5, bias=False, **kwargs):
         super().__init__()
-        print("YOLO V1 Model_Z %d class (224 input), %d bounding boxes.".format(num_classes, B))
+        print("YOLO V1 Model_Z {} class (224 input), {} bounding boxes.".format(num_classes, B))
         self.B = B
         self.Classes_Num = num_classes
 
